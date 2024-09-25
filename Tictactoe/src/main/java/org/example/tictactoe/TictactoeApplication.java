@@ -18,7 +18,7 @@ public class TictactoeApplication {
     @Bean
     public OpenAPI custumOpenApi() {
         return new OpenAPI().info(new Info()
-                .title("OPEN API MICROSERVICIO CLIENTE")
+                .title("OPEN API GAME 3 EN RAYA")
                 .version("0.0.1")
                 .description("servicio web cliente")
                 .termsOfService("http://swagger.io/terms")

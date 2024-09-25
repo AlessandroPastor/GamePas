@@ -1,8 +1,10 @@
 package com.example.game.api
 
 import com.example.game.model.Game
+import com.example.game.model.User
 import retrofit2.Call
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -14,5 +16,6 @@ interface ApiService {
 
     @PATCH("api/games/{id}")
     fun updateWinner(@Path("id") gameId: Long, @Body updatedGame: Map<String, String>): Call<Game>
-
+    @GET("users")
+    fun getUsers(): Call<List<User>>
 }

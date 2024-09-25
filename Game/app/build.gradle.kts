@@ -68,5 +68,14 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation ("com.squareup.retrofit2:retrofit:2.9.0")
     implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation ("androidx.navigation:navigation-compose:2.5.0")
+    implementation ("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation ("com.google.zxing:core:3.3.0")
+    implementation ("androidx.camera:camera-core:1.1.0")
+    implementation ("androidx.camera:camera-camera2:1.1.0")
+    implementation ("androidx.camera:camera-lifecycle:1.1.0")
+    implementation ("androidx.camera:camera-view:1.0.0-alpha30")
+    implementation ("com.google.mlkit:barcode-scanning:17.0.2")
+    implementation ("com.google.accompanist:accompanist-permissions:0.32.0")
 
 }
