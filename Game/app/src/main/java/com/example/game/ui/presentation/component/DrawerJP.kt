@@ -52,6 +52,7 @@ fun MyAppDrawer(
         DrawerItem("Profile", "profile"),
         DrawerItem("Settings", "settings"),
         DrawerItem("Calc", "calc"),
+        DrawerItem("Mi juego", "3enraya"),
         DrawerItem("QR", "barcode")
     )
     var selectedItem by remember { mutableStateOf("home") }

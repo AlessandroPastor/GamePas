@@ -6,11 +6,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -22,19 +25,28 @@ import com.example.game.ui.theme.GameTheme
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             var gameCreated by remember { mutableStateOf<Game?>(null) }
-            var gameStarted by remember { mutableStateOf(false) } // Variable para controlar el estado del juego
+            var gameStarted by remember { mutableStateOf(false) } // Controla si el juego ha comenzado
             var playerX by remember { mutableStateOf("") }
             var playerO by remember { mutableStateOf("") }
 
-            // Aquí decides si mostrar el tablero o la pantalla de entrada de nombres
             if (gameStarted) {
-                TicTacToeBoard(gameCreated!!, playerX, playerO) // Muestra el tablero si el juego ha comenzado
+                TicTacToeBoard(
+                    gameCreated!!, playerX, playerO,
+                    onExit = {
+                        // Acción de salida, reiniciar todo
+                        gameStarted = false
+                        playerX = ""
+                        playerO = ""
+                    }
+                )
             } else {
                 PlayerInputScreen(
                     onGameCreated = { game, pX, pO ->
@@ -61,26 +73,38 @@ fun PlayerInputScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally // Centramos la columna
     ) {
+        // Input para Jugador X
         OutlinedTextField(
             value = playerX,
             onValueChange = { playerX = it },
-            label = { Text("Nombre del Jugador X") },
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Nombre del Jugador 1") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp) // Añadir un pequeño padding
+                .shadow(4.dp, RoundedCornerShape(12.dp)), // Sombras y bordes redondeados
+            shape = RoundedCornerShape(12.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Input para Jugador O
         OutlinedTextField(
             value = playerO,
             onValueChange = { playerO = it },
-            label = { Text("Nombre del Jugador O") },
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Nombre del Jugador 2") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+                .shadow(4.dp, RoundedCornerShape(12.dp)),
+            shape = RoundedCornerShape(12.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Botón para Iniciar Juego
         Button(
             onClick = {
                 if (playerX.isNotBlank() && playerO.isNotBlank()) {
@@ -95,13 +119,26 @@ fun PlayerInputScreen(
                     errorMessage = "Por favor ingresa los nombres de ambos jugadores"
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+                .shadow(4.dp, RoundedCornerShape(16.dp)), // Sombra para el botón
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary, // Color del botón
+                contentColor = MaterialTheme.colorScheme.onPrimary // Color del texto del botón
+            ),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Text("Iniciar Juego")
+            Text("A Divertirse", fontSize = 18.sp)
         }
 
+        // Mostrar mensajes de error
         errorMessage?.let {
-            Text("Error: $it", color = MaterialTheme.colorScheme.error)
+            Text(
+                text = "Error: $it",
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 16.dp)
+            )
         }
     }
 }
@@ -130,11 +167,12 @@ fun createNewGame(playerX: String, playerO: String, onGameCreated: (Game?, Strin
 }
 
 @Composable
-fun TicTacToeBoard(game: Game, playerX: String, playerO: String) {
+fun TicTacToeBoard(game: Game, playerX: String, playerO: String, onExit: () -> Unit) {
     var board by remember { mutableStateOf(game.board.toCharArray()) }
     var currentPlayer by remember { mutableStateOf("X") }
     var result by remember { mutableStateOf<String?>(null) }
     var gameFinished by remember { mutableStateOf(false) }
+    val moveHistory = remember { mutableStateListOf<String>() }
 
     Column(
         modifier = Modifier
@@ -143,15 +181,21 @@ fun TicTacToeBoard(game: Game, playerX: String, playerO: String) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Mostrar nombre del jugador actual o resultado final
         Text(
-            text = result?.let { if (it == "EMPATE") "Empate" else "Ganador: $it" }
-                ?: "Turno del jugador $currentPlayer",
+            text = result?.let {
+                if (it == "EMPATE") "Empate" else "Ganador: $it"
+            } ?: "Turno de ${if (currentPlayer == "X") playerX else playerO}",
             style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(bottom = 24.dp),
+            color = MaterialTheme.colorScheme.primary
         )
 
+        // Tablero de juego
         Board(board = board, onCellClick = { index ->
             if (board[index] == '_' && !gameFinished) {
+                val move = "Jugador ${if (currentPlayer == "X") playerX else playerO} marcó en la posición ${index + 1}"
+                moveHistory.add(move)
                 board[index] = currentPlayer.single()
                 currentPlayer = if (currentPlayer == "X") "O" else "X"
                 checkWinner(board, game.id, playerX, playerO) { gameResult ->
@@ -163,21 +207,68 @@ fun TicTacToeBoard(game: Game, playerX: String, playerO: String) {
             }
         })
 
+        // Botón para Reiniciar Juego
         if (gameFinished) {
             Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = {
-                board = CharArray(9) { '_' }
-                currentPlayer = "X"
-                result = null
-                gameFinished = false
-            }) {
-                Text("Reiniciar Juego")
+            Button(
+                onClick = {
+                    board = CharArray(9) { '_' }
+                    currentPlayer = "X"
+                    result = null
+                    gameFinished = false
+                    moveHistory.clear()
+                },
+                modifier = Modifier
+                    .padding(16.dp)
+                    .shadow(4.dp, RoundedCornerShape(16.dp)),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+            ) {
+                Text("Reiniciar Juego", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSecondary)
             }
+        }
+
+        // Botón para Salir
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = { onExit() },  // Llama a la función onExit cuando se haga clic
+            modifier = Modifier
+                .padding(16.dp)
+                .shadow(4.dp, RoundedCornerShape(16.dp)),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+        ) {
+            Text("Salir", fontSize = 18.sp, color = MaterialTheme.colorScheme.onError)
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Mostrar historial de movimientos
+        Text("Historial de Movimientos", style = MaterialTheme.typography.headlineSmall)
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(moveHistory) { move ->
+                Text(text = move, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+
+        // Mostrar resultado final
+        result?.let {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Resultado final: $it",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
-
-
 
 @Composable
 fun Board(board: CharArray, onCellClick: (Int) -> Unit) {
@@ -200,29 +291,39 @@ fun Board(board: CharArray, onCellClick: (Int) -> Unit) {
 
 
 
+
 @Composable
 fun BoardCell(value: String, onClick: () -> Unit) {
     Card(
         modifier = Modifier
-            .size(100.dp) // Tamaño de la celda
-            .padding(4.dp)
-            .clickable(onClick = onClick),
+            .size(80.dp) // Tamaño de la celda
+            .padding(2.dp) // Padding reducido para que haya menos espacio entre celdas
+            .clickable(onClick = onClick)
+            .shadow(6.dp, RoundedCornerShape(8.dp)), // Sombra más suave y bordes redondeados
         shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(4.dp) // Sombra para el estilo
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // Color de fondo neutro
     ) {
         Box(
-            contentAlignment = Alignment.Center // Centrar el texto "X" u "O"
+            contentAlignment = Alignment.Center // Centrar el texto dentro de la celda
         ) {
             Text(
-                text = if (value == "_") "" else value, // No mostrar el guion bajo
-                style = MaterialTheme.typography.headlineLarge, // Texto grande
-                color = if (value == "X") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary, // Color diferente para "X" y "O"
-                fontSize = 36.sp, // Aumentar el tamaño de la letra
-                textAlign = TextAlign.Center // Asegurar que esté centrado
+                text = if (value == "_") "" else value, // Si es "_", no mostrar nada
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontSize = 36.sp, // Tamaño de la letra ajustado a la celda
+                    fontWeight = FontWeight.Bold // Letras en negrita para mejor visibilidad
+                ),
+                color = when (value) {
+                    "X" -> MaterialTheme.colorScheme.primary // Color para X
+                    "O" -> MaterialTheme.colorScheme.secondary // Color para O
+                    else -> MaterialTheme.colorScheme.onSurface // Si no es X ni O
+                },
+                modifier = Modifier.padding(4.dp), // Añadir un pequeño padding interno
+                textAlign = TextAlign.Center // Asegurar que el texto esté centrado
             )
         }
     }
 }
+
 
 
 fun checkWinner(
@@ -281,7 +382,7 @@ fun updateGameWinner(gameId: Long, winner: String) {
 
 @Preview(showBackground = true)
 @Composable
-fun DefaultPreview() {
+fun TicTacToeGame() {
     var gameCreated by remember { mutableStateOf<Game?>(null) }
     var gameStarted by remember { mutableStateOf(false) } // Variable para controlar el estado del juego
     var playerX by remember { mutableStateOf("") }
@@ -289,7 +390,16 @@ fun DefaultPreview() {
 
     // Aquí decides si mostrar el tablero o la pantalla de entrada de nombres
     if (gameStarted) {
-        TicTacToeBoard(gameCreated!!, playerX, playerO) // Muestra el tablero si el juego ha comenzado
+        TicTacToeBoard(
+            game = gameCreated!!,
+            playerX = playerX,
+            playerO = playerO,
+            onExit = { // Aquí simplemente volvemos a la pantalla de entrada de jugadores
+                gameStarted = false
+                playerX = ""
+                playerO = ""
+            }
+        )
     } else {
         PlayerInputScreen(
             onGameCreated = { game, pX, pO ->
@@ -301,3 +411,4 @@ fun DefaultPreview() {
         )
     }
 }
+

@@ -19,7 +19,7 @@ public class UserController {
     // Obtener todos los usuarios
     @GetMapping
     public List<User> getAllUsers() {
-        return userService.getAllUsers();   
+        return userService.getAllUsers();
     }
 
     // Crear un nuevo usuario

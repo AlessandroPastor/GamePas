@@ -76,7 +76,7 @@ fun CustomTopAppBar(
                 .statusBarsPadding(),
             title = {
                 Text(
-                    text = if (contDes=="") "App Bar" else
+                    text = if (contDes=="") "App Pastor" else
                         contDes,
                     color =
                     MaterialTheme.colorScheme.secondary,
