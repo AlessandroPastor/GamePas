@@ -27,6 +27,9 @@ import retrofit2.Callback
 import retrofit2.Response
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import com.example.game.model.Match
 
 class MainActivity : ComponentActivity() {
@@ -155,7 +158,10 @@ fun MatchBoard(match: Match, playerX: String, playerO: String, onExit: () -> Uni
         // Botón para salir
         Spacer(modifier = Modifier.height(16.dp))
         Button(
-            onClick = { onExit() },
+            onClick = {
+                updateMatchWinner(match.id, "", isCancelled = true)  // Aquí anulas el match
+                onExit()  // Aquí vuelves a la pantalla de selección
+            },
             modifier = Modifier
                 .padding(16.dp)
                 .shadow(4.dp, RoundedCornerShape(16.dp)),
@@ -213,6 +219,14 @@ fun GameModeSelectionScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Aquí agregamos el título
+        Text(
+            text = "Bienvenido Pastor",
+            style = MaterialTheme.typography.headlineMedium,  // Puedes cambiar el estilo según tu necesidad
+            color = MaterialTheme.colorScheme.primary,       // Color del texto
+            modifier = Modifier.padding(bottom = 16.dp)      // Espacio entre el título y los campos
+        )
+
         // Inputs para los nombres de los jugadores
         OutlinedTextField(
             value = playerX,
@@ -287,12 +301,12 @@ fun GameModeSelectionScreen(
     }
 }
 
-fun updateMatchWinner(matchId: Long, winner: String) {
-    RetrofitClient.instance.updateMatchWinner(matchId, winner)
+fun updateMatchWinner(matchId: Long, winner: String, isCancelled: Boolean = false) {
+    RetrofitClient.instance.updateMatchWinner(matchId, winner, isCancelled)
         .enqueue(object : Callback<Match> {
             override fun onResponse(call: Call<Match>, response: Response<Match>) {
                 if (response.isSuccessful) {
-                    Log.d("Match", "Resultado guardado: $winner")
+                    Log.d("Match", if (isCancelled) "Partido anulado" else "Resultado guardado: $winner")
                 } else {
                     Log.e("Match", "Error al guardar el resultado: ${response.errorBody()?.string()}")
                 }
@@ -304,7 +318,25 @@ fun updateMatchWinner(matchId: Long, winner: String) {
         })
 }
 
-@Composable
+
+fun updateGameWinner(gameId: Long, winner: String, isCancelled: Boolean = false) {
+    RetrofitClient.instance.updateWinner(gameId, winner, isCancelled)
+        .enqueue(object : Callback<Game> {
+            override fun onResponse(call: Call<Game>, response: Response<Game>) {
+                if (response.isSuccessful) {
+                    Log.d("Game", if (isCancelled) "Juego anulado" else "Resultado guardado: $winner")
+                } else {
+                    Log.e("Game", "Error al guardar el resultado: ${response.errorBody()?.string()}")
+                }
+            }
+
+            override fun onFailure(call: Call<Game>, t: Throwable) {
+                Log.e("Game", "Error de conexión: ${t.message}")
+            }
+        })
+}
+
+/*@Composable
 fun PlayerInputScreen(
     onGameCreated: (Game, String, String) -> Unit // Agrega este callback
 ) {
@@ -384,12 +416,12 @@ fun PlayerInputScreen(
             )
         }
     }
-}
+}*/
 
 
 // Función para crear un nuevo juego en el backend
 fun createNewGame(playerX: String, playerO: String, onGameCreated: (Game?, String?) -> Unit) {
-    val newGame = Game(0, playerX, playerO, "_________", false, null)
+    val newGame = Game(0, playerX, playerO, "_________", false, null, "JUGANDO")  // Estado inicial JUGANDO
     RetrofitClient.instance.createGame(newGame)
         .enqueue(object : Callback<Game> {
             override fun onResponse(call: Call<Game>, response: Response<Game>) {
@@ -408,6 +440,7 @@ fun createNewGame(playerX: String, playerO: String, onGameCreated: (Game?, Strin
             }
         })
 }
+
 
 fun createNewMatch(playerX: String, playerO: String, totalRounds: Int, onMatchCreated: (Match?, String?) -> Unit) {
     RetrofitClient.instance.createMatch(playerX, playerO, totalRounds)
@@ -444,17 +477,19 @@ fun TicTacToeBoard(game: Game, playerX: String, playerO: String, onExit: () -> U
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Mostrar nombre del jugador actual o resultado final
+        // Mostrar el nombre del jugador actual o el resultado final
         Text(
             text = result?.let {
-                if (it == "EMPATE") "Empate" else "Ganador: $it"
+                if (it == "EMPATE") "Empate"
+                else if (it == "ANULADO") "Juego anulado"  // Mostrar cuando el juego es anulado
+                else "Ganador: $it"
             } ?: "Turno de ${if (currentPlayer == "X") playerX else playerO}",
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 24.dp),
             color = MaterialTheme.colorScheme.primary
         )
 
-        // Tablero de juego
+        // Tablero del juego
         Board(board = board, onCellClick = { index ->
             if (board[index] == '_' && !gameFinished) {
                 val move = "Jugador ${if (currentPlayer == "X") playerX else playerO} marcó en la posición ${index + 1}"
@@ -470,31 +505,13 @@ fun TicTacToeBoard(game: Game, playerX: String, playerO: String, onExit: () -> U
             }
         })
 
-        // Botón para Reiniciar Juego
-        if (gameFinished) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = {
-                    board = CharArray(9) { '_' }
-                    currentPlayer = "X"
-                    result = null
-                    gameFinished = false
-                    moveHistory.clear()
-                },
-                modifier = Modifier
-                    .padding(16.dp)
-                    .shadow(4.dp, RoundedCornerShape(16.dp)),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-            ) {
-                Text("Reiniciar Juego", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSecondary)
-            }
-        }
-
-        // Botón para Salir
+        // Botón para anular el juego y salir
         Spacer(modifier = Modifier.height(16.dp))
         Button(
-            onClick = { onExit() },  // Llama a la función onExit cuando se haga clic
+            onClick = {
+                updateGameWinner(game.id, "", isCancelled = true)  // Aquí anulas el juego
+                onExit()  // Aquí vuelves a la pantalla de selección
+            },
             modifier = Modifier
                 .padding(16.dp)
                 .shadow(4.dp, RoundedCornerShape(16.dp)),
@@ -514,24 +531,46 @@ fun TicTacToeBoard(game: Game, playerX: String, playerO: String, onExit: () -> U
                 .fillMaxWidth()
                 .height(200.dp)
                 .padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(moveHistory) { move ->
-                Text(text = move, style = MaterialTheme.typography.bodyMedium)
-            }
-        }
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(4.dp, RoundedCornerShape(12.dp))
+                        .padding(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (move.contains("Jugador X")) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.secondaryContainer
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = move,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (move.contains("Jugador X")) MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSecondaryContainer
+                        )
 
-        // Mostrar resultado final
-        result?.let {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Resultado final: $it",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
+                        Icon(
+                            imageVector = if (move.contains("Jugador X")) Icons.Default.Close else Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = if (move.contains("Jugador X")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
+            }
         }
     }
 }
+
 
 @Composable
 fun Board(board: CharArray, onCellClick: (Int) -> Unit) {

@@ -24,7 +24,7 @@ interface ApiService {
     fun getUsers(): Call<List<User>>
 
     // Método para crear un nuevo match en el backend
-    @POST("matches/create")
+    @POST("raunds/create")
     fun createMatch(
         @Query("playerX") playerX: String,
         @Query("playerO") playerO: String,
@@ -32,17 +32,24 @@ interface ApiService {
     ): Call<Match>
 
     // Método para obtener un match por su ID
-    @GET("matches/{id}")
+    @GET("raunds/{id}")
     fun getMatchById(@Path("id") matchId: Long): Call<Match>
 
+    @PUT("api/games/{id}/winner")
+    fun updateWinner(
+        @Path("id") gameId: Long,
+        @Query("winner") winner: String,
+        @Query("isCancelled") isCancelled: Boolean = false
+    ): Call<Game>
     // Método para actualizar el ganador de una ronda en un match
-    @PUT("matches/{id}/winner")
+    @PUT("raunds/{id}/winner")
     fun updateMatchWinner(
         @Path("id") matchId: Long,
-        @Query("winner") winner: String
+        @Query("winner") winner: String,
+        @Query("isCancelled") isCancelled: Boolean = false
     ): Call<Match>
 
     // Método para obtener todos los matches de un jugador
-    @GET("matches/player/{playerName}")
+    @GET("raunds/player/{playerName}")
     fun getMatchesByPlayer(@Path("playerName") playerName: String): Call<List<Match>>
 }

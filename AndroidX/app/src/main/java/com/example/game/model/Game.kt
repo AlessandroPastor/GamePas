@@ -6,5 +6,6 @@ data class Game(
     val playerO: String,
     val board: String,  // Representación del tablero, por ejemplo "XOXOXO___"
     val isFinished: Boolean,
-    val winner: String?
+    val winner: String?,
+    val status: String  // Estado del juego: JUGANDO, GANADO, ANULADO
 )

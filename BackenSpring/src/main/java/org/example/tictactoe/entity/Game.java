@@ -19,6 +19,6 @@ public class Game {
     public enum GameStatus {
         JUGANDO,
         GANADO,
-        EMPATE
+        ANULADO
     }
 }

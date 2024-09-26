@@ -9,31 +9,36 @@ import java.util.Optional;
 
 @Service
 public class GameService {
+
     @Autowired
     private GameRepository gameRepository;
+
+    // Crear un nuevo juego
     public Game createGame(Game game) {
-        game.setBoard("_________");
-        game.setFinished(false);
+        game.setBoard("_________");  // Inicializa el tablero vacío
+        game.setFinished(false);     // El juego no ha terminado
+        game.setStatus(Game.GameStatus.JUGANDO);  // Estado inicial del juego
         return gameRepository.save(game);
     }
 
-
+    // Obtener un juego por su ID
     public Game getGameById(Long id) {
         Optional<Game> game = gameRepository.findById(id);
         return game.orElseThrow(() -> new RuntimeException("Game no encontrado"));
     }
 
+    // Eliminar un juego por su ID
     public void deleteGame(Long id) {
         Game game = getGameById(id);
         gameRepository.delete(game);
     }
 
-    // Actualizar el tablero y hacer un movimiento
+    // Actualizar el tablero y realizar un movimiento
     public Game makeMove(Long id, int position, String player) {
         Game game = getGameById(id);
 
         if (game.isFinished()) {
-            throw new RuntimeException("Game ya esta terminado");
+            throw new RuntimeException("Game ya está terminado");
         }
 
         char[] boardArray = game.getBoard().toCharArray();
@@ -44,34 +49,41 @@ public class GameService {
             game.setBoard(String.valueOf(boardArray));
             // Aquí puedes añadir lógica para verificar si alguien ha ganado
         } else {
-            throw new RuntimeException("Position already taken");
+            throw new RuntimeException("Posición ya ocupada");
         }
 
         return gameRepository.save(game);
     }
 
-    // Verificar si hay un ganador (a futuro)
+    // Verificar si hay un ganador
     public String checkWinner(Game game) {
-        // Lógica para verificar si hay un ganador
-        // Esto puede ser tan simple como revisar las combinaciones ganadoras
-        return "no winner";
+        // Aquí iría la lógica para verificar si hay un ganador
+        return "no winner"; // Ejemplo, aún no se ha implementado
     }
 
-
-    // Método para actualizar el ganador del juego
-    public Game updateWinner(Long gameId, String winner) throws Exception {
-        // Busca el juego por ID
+    // Método para actualizar el estado del juego y el ganador
+    public Game updateWinner(Long gameId, String winner, boolean isCancelled) throws Exception {
         Optional<Game> optionalGame = gameRepository.findById(gameId);
 
         if (optionalGame.isPresent()) {
             Game game = optionalGame.get();
-            game.setWinner(winner); // Establece el ganador
-            return gameRepository.save(game); // Guarda el juego actualizado
+
+            if (isCancelled) {
+                game.setStatus(Game.GameStatus.ANULADO);  // Cambiar el estado a ANULADO
+                game.setWinner(null);  // Si es anulado, no debería haber ganador
+            } else {
+                game.setWinner(winner);
+                game.setStatus(Game.GameStatus.GANADO);  // Cambiar el estado a GANADO
+            }
+
+            return gameRepository.save(game);
         } else {
             throw new Exception("Juego no encontrado");
         }
     }
 
+
+    // Actualizar cualquier cambio en el juego
     public Game updateGame(Game game) {
         return gameRepository.save(game);
     }
