@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/game
+    username: tu_usuario
+    password: tu_contraseña
+  jpa:
+    hibernate:
+      ddl-auto: update
