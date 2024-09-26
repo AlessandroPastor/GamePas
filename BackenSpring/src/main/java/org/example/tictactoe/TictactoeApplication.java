@@ -9,12 +9,9 @@ import org.springframework.context.annotation.Bean;
 
 @SpringBootApplication
 public class TictactoeApplication {
-
     public static void main(String[] args) {
         SpringApplication.run(TictactoeApplication.class, args);
     }
-
-
     @Bean
     public OpenAPI custumOpenApi() {
         return new OpenAPI().info(new Info()

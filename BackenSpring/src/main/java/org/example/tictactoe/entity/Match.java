@@ -2,9 +2,6 @@ package org.example.tictactoe.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import org.springframework.beans.factory.config.YamlProcessor;
-
-import java.util.List;
 
 @Data
 @Entity
