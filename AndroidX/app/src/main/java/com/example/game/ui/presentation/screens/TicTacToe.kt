@@ -647,31 +647,53 @@ fun updateGameWinner(gameId: Long, winner: String) {
 @Composable
 fun TicTacToeGame() {
     var gameCreated by remember { mutableStateOf<Game?>(null) }
-    var gameStarted by remember { mutableStateOf(false) } // Variable para controlar el estado del juego
+    var matchCreated by remember { mutableStateOf<Match?>(null) }  // Para manejar Match
+    var gameStarted by remember { mutableStateOf(false) }  // Controla si el juego ha comenzado
+    var matchStarted by remember { mutableStateOf(false) }  // Controla si el Match ha comenzado
     var playerX by remember { mutableStateOf("") }
     var playerO by remember { mutableStateOf("") }
 
-    // Aquí decides si mostrar el tablero o la pantalla de entrada de nombres
+    // Pantalla para elegir entre jugar una partida única o un match
     if (gameStarted) {
         TicTacToeBoard(
             game = gameCreated!!,
             playerX = playerX,
             playerO = playerO,
-            onExit = { // Aquí simplemente volvemos a la pantalla de entrada de jugadores
+            onExit = {
+                // Aquí simplemente volvemos a la pantalla de entrada de jugadores
                 gameStarted = false
                 playerX = ""
                 playerO = ""
             }
         )
+    } else if (matchStarted) {
+        MatchBoard(
+            match = matchCreated!!,
+            playerX = playerX,
+            playerO = playerO,
+            onExit = {
+                // Aquí simplemente volvemos a la pantalla de entrada de jugadores
+                matchStarted = false
+                playerX = ""
+                playerO = ""
+            }
+        )
     } else {
-        PlayerInputScreen(
-            onGameCreated = { game, pX, pO ->
+        GameModeSelectionScreen(
+            onGameSelected = { game, pX, pO ->
                 gameCreated = game
                 playerX = pX
                 playerO = pO
-                gameStarted = true // Cambia a la pantalla del tablero
+                gameStarted = true  // Cambia a la pantalla del tablero para una partida única
+            },
+            onMatchSelected = { match, pX, pO ->
+                matchCreated = match
+                playerX = pX
+                playerO = pO
+                matchStarted = true  // Cambia a la pantalla del match
             }
         )
     }
 }
+
 
