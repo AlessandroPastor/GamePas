@@ -55,4 +55,6 @@ public class MatchController {
         List<Match> matches = matchService.getMatchesByPlayer(playerName);
         return ResponseEntity.ok(matches);
     }
+
+
 }
