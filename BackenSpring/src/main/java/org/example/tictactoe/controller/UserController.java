@@ -16,19 +16,18 @@ public class UserController {
     @Autowired
     private Userservice userService;
 
-    // Obtener todos los usuarios
+
     @GetMapping
     public List<User> getAllUsers() {
         return userService.getAllUsers();
     }
 
-    // Crear un nuevo usuario
+
     @PostMapping
     public User createUser(@RequestBody User user) {
         return userService.saveUser(user);
     }
 
-    // Obtener un usuario por ID
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable Integer id) {
         Optional<User> user = userService.getUserById(id);
@@ -39,7 +38,6 @@ public class UserController {
         }
     }
 
-    // Eliminar un usuario
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Integer id) {
         userService.deleteUserById(id);

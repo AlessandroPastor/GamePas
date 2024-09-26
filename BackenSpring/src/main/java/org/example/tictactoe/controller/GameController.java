@@ -4,6 +4,7 @@ import org.example.tictactoe.entity.Game;
 import org.example.tictactoe.repository.GameRepository;
 import org.example.tictactoe.service.GameService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -56,6 +57,23 @@ public class GameController {
         } catch (Exception e) {
             return ResponseEntity.notFound().build(); // Juego no encontrado
         }
+    }
+
+    @PostMapping("/games")
+    public ResponseEntity<Game> createGame(@RequestBody Game game) {
+        game.setStatus(Game.GameStatus.JUGANDO);  // Usar el enum en lugar de un String
+        Game newGame = gameService.createGame(game);
+        return ResponseEntity.status(HttpStatus.CREATED).body(newGame);
+    }
+
+    @PutMapping("/games/{id}/winner")
+    public ResponseEntity<Game> updateGameWinner(@PathVariable Long id, @RequestBody String winner) {
+        Game game = gameService.getGameById(id);
+        game.setWinner(winner);
+        game.setStatus(Game.GameStatus.GANADO);  // Actualizar el estado a GANADO
+        game.setFinished(true);
+        Game updatedGame = gameService.updateGame(game);
+        return ResponseEntity.ok(updatedGame);
     }
 
 }

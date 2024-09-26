@@ -17,6 +17,7 @@ public class GameService {
         return gameRepository.save(game);
     }
 
+
     public Game getGameById(Long id) {
         Optional<Game> game = gameRepository.findById(id);
         return game.orElseThrow(() -> new RuntimeException("Game no encontrado"));
@@ -69,5 +70,9 @@ public class GameService {
         } else {
             throw new Exception("Juego no encontrado");
         }
+    }
+
+    public Game updateGame(Game game) {
+        return gameRepository.save(game);
     }
 }
