@@ -18,10 +18,8 @@ public class Match {
     private int roundsWonByPlayerX; // Número de rondas ganadas por playerX
     private int roundsWonByPlayerO; // Número de rondas ganadas por playerO
     private String matchWinner; // Quién ganó el match completo (playerX o playerO)
-
     @Enumerated(EnumType.STRING)
     private MatchStatus status; // Estado del match: JUGANDO, FINALIZADO
-
     public enum MatchStatus {
         JUGANDO,
         FINALIZADO
