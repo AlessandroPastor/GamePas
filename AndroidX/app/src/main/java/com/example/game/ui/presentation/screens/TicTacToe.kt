@@ -27,13 +27,16 @@ import retrofit2.Callback
 import retrofit2.Response
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import com.example.game.model.Match
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             var gameCreated by remember { mutableStateOf<Game?>(null) }
+            var matchCreated by remember { mutableStateOf<Match?>(null) } // Para manejar Match
             var gameStarted by remember { mutableStateOf(false) } // Controla si el juego ha comenzado
+            var matchStarted by remember { mutableStateOf(false) } // Controla si el Match ha comenzado
             var playerX by remember { mutableStateOf("") }
             var playerO by remember { mutableStateOf("") }
 
@@ -41,24 +44,264 @@ class MainActivity : ComponentActivity() {
                 TicTacToeBoard(
                     gameCreated!!, playerX, playerO,
                     onExit = {
-                        // Acción de salida, reiniciar todo
                         gameStarted = false
                         playerX = ""
                         playerO = ""
                     }
                 )
+            } else if (matchStarted) {
+                // Aquí mostrarías la lógica del match
+                MatchBoard(
+                    matchCreated!!, playerX, playerO,
+                    onExit = {
+                        matchStarted = false
+                        playerX = ""
+                        playerO = ""
+                    }
+                )
             } else {
-                PlayerInputScreen(
-                    onGameCreated = { game, pX, pO ->
+                GameModeSelectionScreen(
+                    onGameSelected = { game, pX, pO ->
                         gameCreated = game
                         playerX = pX
                         playerO = pO
-                        gameStarted = true // Cambia a la pantalla del tablero
+                        gameStarted = true
+                    },
+                    onMatchSelected = { match, pX, pO ->
+                        matchCreated = match
+                        playerX = pX
+                        playerO = pO
+                        matchStarted = true
                     }
                 )
             }
         }
     }
+}
+
+@Composable
+fun MatchBoard(match: Match, playerX: String, playerO: String, onExit: () -> Unit) {
+    var currentRound by remember { mutableStateOf(1) }  // Ronda actual
+    var currentPlayer by remember { mutableStateOf("X") }
+    var board by remember { mutableStateOf(CharArray(9) { '_' }) }
+    var result by remember { mutableStateOf<String?>(null) }
+    var matchFinished by remember { mutableStateOf(false) }
+    val moveHistory = remember { mutableStateListOf<String>() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Mostrar la ronda actual
+        Text(
+            text = "Ronda $currentRound de ${match.totalRounds}",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Mostrar nombre del jugador actual o resultado final
+        Text(
+            text = result?.let {
+                if (it == "EMPATE") "Empate en la Ronda $currentRound" else "Ganador: $it en la Ronda $currentRound"
+            } ?: "Turno de ${if (currentPlayer == "X") playerX else playerO}",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 24.dp),
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        // Tablero de juego para la ronda actual
+        Board(board = board, onCellClick = { index ->
+            if (board[index] == '_' && !matchFinished) {
+                val move = "Jugador ${if (currentPlayer == "X") playerX else playerO} marcó en la posición ${index + 1}"
+                moveHistory.add(move)
+                board[index] = currentPlayer.single()
+                currentPlayer = if (currentPlayer == "X") "O" else "X"
+                checkWinnerForMatch(board, match.id, playerX, playerO) { roundResult ->
+                    if (roundResult != null) {
+                        result = roundResult
+                        if (currentRound < match.totalRounds) {
+                            // Si quedan más rondas, avanzamos
+                            currentRound++
+                            board = CharArray(9) { '_' }  // Reiniciar el tablero para la nueva ronda
+                            result = null
+                        } else {
+                            // Si no quedan más rondas, terminamos el Match
+                            matchFinished = true
+                        }
+                    }
+                }
+            }
+        })
+
+        // Mostrar el historial de movimientos
+        Text("Historial de Movimientos", style = MaterialTheme.typography.headlineSmall)
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(moveHistory) { move ->
+                Text(text = move, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+
+        // Botón para salir
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = { onExit() },
+            modifier = Modifier
+                .padding(16.dp)
+                .shadow(4.dp, RoundedCornerShape(16.dp)),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+        ) {
+            Text("Salir", fontSize = 18.sp, color = MaterialTheme.colorScheme.onError)
+        }
+    }
+}
+fun checkWinnerForMatch(
+    board: CharArray,
+    matchId: Long,
+    playerX: String,
+    playerO: String,
+    onResult: (String?) -> Unit // Usamos onResult para manejar el resultado de cada ronda
+) {
+    val winPatterns = listOf(
+        listOf(0, 1, 2), listOf(3, 4, 5), listOf(6, 7, 8), // Filas
+        listOf(0, 3, 6), listOf(1, 4, 7), listOf(2, 5, 8), // Columnas
+        listOf(0, 4, 8), listOf(2, 4, 6)  // Diagonales
+    )
+
+    for (pattern in winPatterns) {
+        val (a, b, c) = pattern
+        if (board[a] != '_' && board[a] == board[b] && board[b] == board[c]) {
+            val winner = if (board[a] == 'X') playerX else playerO
+            updateMatchWinner(matchId, winner) // Guardar el ganador en la base de datos
+            onResult(winner) // Retornar el ganador de la ronda
+            return
+        }
+    }
+
+    if (board.none { it == '_' }) {
+        updateMatchWinner(matchId, "EMPATE") // Guardar "EMPATE" en la base de datos
+        onResult("EMPATE") // Retornar que es empate
+    } else {
+        onResult(null) // Si no hay ganador ni empate, continúa el juego
+    }
+}
+@Composable
+fun GameModeSelectionScreen(
+    onGameSelected: (Game, String, String) -> Unit,
+    onMatchSelected: (Match, String, String) -> Unit
+) {
+    var playerX by remember { mutableStateOf("") }
+    var playerO by remember { mutableStateOf("") }
+    var totalRounds by remember { mutableStateOf(3) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Inputs para los nombres de los jugadores
+        OutlinedTextField(
+            value = playerX,
+            onValueChange = { playerX = it },
+            label = { Text("Nombre del Jugador 1") },
+            modifier = Modifier.fillMaxWidth().padding(8.dp)
+        )
+
+        OutlinedTextField(
+            value = playerO,
+            onValueChange = { playerO = it },
+            label = { Text("Nombre del Jugador 2") },
+            modifier = Modifier.fillMaxWidth().padding(8.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Botón para crear una partida única
+        Button(
+            onClick = {
+                if (playerX.isNotBlank() && playerO.isNotBlank()) {
+                    createNewGame(playerX, playerO) { newGame, error ->
+                        if (error == null) {
+                            onGameSelected(newGame!!, playerX, playerO)
+                        } else {
+                            errorMessage = error
+                        }
+                    }
+                } else {
+                    errorMessage = "Por favor ingresa los nombres de ambos jugadores"
+                }
+            },
+            modifier = Modifier.fillMaxWidth().padding(8.dp)
+        ) {
+            Text("Iniciar Partida Única")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Campo para definir el número de rondas
+        OutlinedTextField(
+            value = totalRounds.toString(),
+            onValueChange = { totalRounds = it.toIntOrNull() ?: 3 },
+            label = { Text("Total de Rondas (Mejor de 3, 5, etc.)") },
+            modifier = Modifier.fillMaxWidth().padding(8.dp)
+        )
+
+        // Botón para crear un Match
+        Button(
+            onClick = {
+                if (playerX.isNotBlank() && playerO.isNotBlank()) {
+                    createNewMatch(playerX, playerO, totalRounds) { newMatch, error ->
+                        if (error == null) {
+                            onMatchSelected(newMatch!!, playerX, playerO)
+                        } else {
+                            errorMessage = error
+                        }
+                    }
+                } else {
+                    errorMessage = "Por favor ingresa los nombres de ambos jugadores"
+                }
+            },
+            modifier = Modifier.fillMaxWidth().padding(8.dp)
+        ) {
+            Text("Iniciar Match (Múltiples Rondas)")
+        }
+
+        // Mostrar error si existe
+        errorMessage?.let {
+            Text(text = "Error: $it", color = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+fun updateMatchWinner(matchId: Long, winner: String) {
+    RetrofitClient.instance.updateMatchWinner(matchId, winner)
+        .enqueue(object : Callback<Match> {
+            override fun onResponse(call: Call<Match>, response: Response<Match>) {
+                if (response.isSuccessful) {
+                    Log.d("Match", "Resultado guardado: $winner")
+                } else {
+                    Log.e("Match", "Error al guardar el resultado: ${response.errorBody()?.string()}")
+                }
+            }
+
+            override fun onFailure(call: Call<Match>, t: Throwable) {
+                Log.e("Match", "Error de conexión: ${t.message}")
+            }
+        })
 }
 
 @Composable
@@ -162,6 +405,26 @@ fun createNewGame(playerX: String, playerO: String, onGameCreated: (Game?, Strin
             override fun onFailure(call: Call<Game>, t: Throwable) {
                 Log.e("Game", "Error de conexión: ${t.message}")
                 onGameCreated(null, t.message ?: "Error de conexión")
+            }
+        })
+}
+
+fun createNewMatch(playerX: String, playerO: String, totalRounds: Int, onMatchCreated: (Match?, String?) -> Unit) {
+    RetrofitClient.instance.createMatch(playerX, playerO, totalRounds)
+        .enqueue(object : Callback<Match> {
+            override fun onResponse(call: Call<Match>, response: Response<Match>) {
+                if (response.isSuccessful) {
+                    response.body()?.let { onMatchCreated(it, null) }
+                } else {
+                    val error = response.errorBody()?.string()
+                    Log.e("Match", "Error al crear el match: $error")
+                    onMatchCreated(null, error ?: "Error al crear el match")
+                }
+            }
+
+            override fun onFailure(call: Call<Match>, t: Throwable) {
+                Log.e("Match", "Error de conexión: ${t.message}")
+                onMatchCreated(null, t.message ?: "Error de conexión")
             }
         })
 }
