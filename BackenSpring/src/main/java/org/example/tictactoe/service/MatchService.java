@@ -62,9 +62,6 @@ public class MatchService {
     }
 
     // Obtener todos los matches de un jugador
-    public List<Match> getMatchesByPlayer(String playerName) {
-        return matchRepository.findByPlayerXOrPlayerO(playerName, playerName);
-    }
 
     // Otros métodos pueden agregarse aquí si es necesario
 }
